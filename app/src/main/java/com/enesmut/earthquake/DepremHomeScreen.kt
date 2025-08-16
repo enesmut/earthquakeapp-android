@@ -1,0 +1,229 @@
+package com.enesmut.earthquake
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+// ---- Renkler (görsele yakın tonlar)
+private val BlueSelected = Color(0xFF548FF1)    // zaman filtresi seçili
+private val ChipBg = Color(0xFFF5F0F0)          // zaman filtresi seçili değil
+private val DividerGray = Color(0x33212121)
+
+private val MagGreen = Color(0xFFA7E6B5)
+private val MagYellow = Color(0xFFF5E28A)
+private val MagOrange = Color(0xFFF7B24A)
+private val MagRed = Color(0xFFEF5858)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DepremHomeScreen(vm: HomeViewModel = viewModel()) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Deprem",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                actions = {
+                    IconButton(onClick = { /* ayarlar gelecek */ }) {
+                        Icon(Icons.Default.Menu, contentDescription = "Ayarlar")
+                    }
+                }
+            )
+        }
+    ) { inner ->
+        Column(
+            modifier = Modifier
+                .padding(inner)
+                .fillMaxSize()
+        ) {
+            // ----- Zaman Filtresi Başlık
+            Text(
+                text = "Zaman Filtresi",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+            )
+
+            // ----- Zaman Filtresi (segmented)
+            TimeSegmented(
+                items = listOf("24 saat", "48 saat", "72 saat", "96 saat"),
+                selectedIndex = vm.timeIndex,
+                onSelect = vm::selectTime
+            )
+
+            // "son 24 saat" satırı
+            Text(
+                text = "son ${vm.timeLabel}",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 20.dp, top = 10.dp, bottom = 8.dp),
+                color = Color(0x99000000)
+            )
+
+            // ----- Liste / Harita sekmeleri
+            TabsListMap(
+                selectedIndex = vm.tabIndex,
+                onSelect = vm::selectTab
+            )
+
+            // İçerik placeholder (şimdilik)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (vm.tabIndex == 0) {
+                    Text("Liste tabbarı seçili ise\n\n", textAlign = TextAlign.Center)
+                    Text("Liste", fontSize = 36.sp, fontWeight = FontWeight.Bold)
+                } else {
+                    Text("Harita tabbarı seçili ise\n\n", textAlign = TextAlign.Center)
+                    Text("Harita", fontSize = 36.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            // ----- Büyüklük filtresi
+            Text(
+                text = "Büyüklük (Mw)",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
+
+            MagnitudeChips(
+                items = listOf("≤ 2", "2<-<4", "4-<6", "≥ 6"),
+                colors = listOf(MagGreen, MagYellow, MagOrange, MagRed),
+                selected = vm.magSelection,
+                onToggle = vm::toggleMagnitude
+            )
+
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun TimeSegmented(
+    items: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .border(
+                BorderStroke(1.dp, Color(0x11000000)),
+                shape = RoundedCornerShape(14.dp)
+            )
+            .padding(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items.forEachIndexed { i, label ->
+            val selected = i == selectedIndex
+            val bg = if (selected) BlueSelected else ChipBg
+            val textColor = if (selected) Color.White else Color(0xDD111111)
+
+            TextButton(
+                onClick = { onSelect(i) },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                colors = ButtonDefaults.textButtonColors(containerColor = bg, contentColor = textColor)
+            ) {
+                Text(label, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TabsListMap(
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit
+) {
+    TabRow(
+        selectedTabIndex = selectedIndex,
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        indicator = { tabPositions ->
+            Box(Modifier.fillMaxSize()) {                      // artık BoxScope içindeyiz
+                val pos = tabPositions[selectedIndex]
+                Box(
+                    Modifier
+                        .tabIndicatorOffset(pos)
+                        .height(2.dp)
+                        .fillMaxWidth(0.48f)                  // görseldeki kısa çizgi
+                        .align(Alignment.BottomStart)         // burada artık çalışır
+                        .padding(start = if (selectedIndex == 0) 24.dp else 0.dp)
+                        .background(Color.Black.copy(alpha = 0.6f))
+                )
+            }
+        },
+        divider = { Divider(color = DividerGray, thickness = 1.dp) }
+    ) {
+        Tab(
+            selected = selectedIndex == 0,
+            onClick = { onSelect(0) },
+            text = { Text("Liste", fontSize = 28.sp, fontWeight = FontWeight.SemiBold) }
+        )
+        Tab(
+            selected = selectedIndex == 1,
+            onClick = { onSelect(1) },
+            text = { Text("Harita", fontSize = 28.sp, fontWeight = FontWeight.SemiBold) }
+        )
+    }
+}
+
+@Composable
+private fun MagnitudeChips(
+    items: List<String>,
+    colors: List<Color>,
+    selected: Set<Int>,
+    onToggle: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items.forEachIndexed { i, label ->
+            val isSel = i in selected
+            val bg = colors[i]
+            val stroke = if (isSel) BorderStroke(2.dp, Color.Black.copy(alpha = 0.25f)) else null
+            Surface(
+                onClick = { onToggle(i) },
+                shape = RoundedCornerShape(16.dp),
+                color = bg,
+                border = stroke,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp)
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(label, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
