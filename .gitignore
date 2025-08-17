@@ -1,0 +1,53 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+build/
+
+# Gradle files
+.gradle/
+build/
+**/build/
+local.properties
+.gradle/
+
+# Log files
+*.log
+
+# Android Studio
+.idea/
+*.iml
+.cache/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystore files (important: do not share your signing keys)
+*.jks
+*.keystore
+
+# Google Services (API keys, etc.)
+google-services.json
+
+# NDK
+obj/
+
+# Misc
+.DS_Store
+*.swp
+*.tmp
+*.bak
+
+# Jetpack Compose Preview
+.idea/deploymentTargetDropDown.xml
