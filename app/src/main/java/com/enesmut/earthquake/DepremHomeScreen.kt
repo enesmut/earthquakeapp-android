@@ -1,12 +1,17 @@
 package com.enesmut.earthquake
-
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.runtime.LaunchedEffect
+import java.util.Date
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -19,6 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 // ---- Renkler (görsele yakın tonlar)
 private val BlueSelected = Color(0xFF548FF1)    // zaman filtresi seçili
@@ -36,25 +43,23 @@ fun DepremHomeScreen(vm: HomeViewModel = viewModel()) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "Deprem",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+                title = { Text("Deprem", fontSize = 28.sp, fontWeight = FontWeight.Bold) },
                 actions = {
-                    IconButton(onClick = { /* ayarlar gelecek */ }) {
+                    IconButton(onClick = { vm.load() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Yenile")
+                    }
+                    IconButton(onClick = { /* ayarlar */ }) {
                         Icon(Icons.Default.Menu, contentDescription = "Ayarlar")
                     }
                 }
             )
         }
     ) { inner ->
+        // İlk açılışta otomatik veri çek
+        LaunchedEffect(Unit) { vm.load() }
+
         Column(
-            modifier = Modifier
-                .padding(inner)
-                .fillMaxSize()
+            modifier = Modifier.padding(inner).fillMaxSize()
         ) {
             // ----- Zaman Filtresi Başlık
             Text(
@@ -86,20 +91,26 @@ fun DepremHomeScreen(vm: HomeViewModel = viewModel()) {
 
             // İçerik placeholder (şimdilik)
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                modifier = Modifier.weight(1f).fillMaxWidth()
             ) {
                 if (vm.tabIndex == 0) {
-                    Text("Liste tabbarı seçili ise\n\n", textAlign = TextAlign.Center)
-                    Text("Liste", fontSize = 36.sp, fontWeight = FontWeight.Bold)
+                    // --- LISTE ---
+                    when {
+                        vm.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                        vm.error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Hata: ${vm.error}")
+                        }
+                        else -> EarthquakeList(vm)
+                    }
                 } else {
-                    Text("Harita tabbarı seçili ise\n\n", textAlign = TextAlign.Center)
-                    Text("Harita", fontSize = 36.sp, fontWeight = FontWeight.Bold)
+                    // --- HARITA (sonraki adım) ---
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Harita entegrasyonu bir sonraki adımda")
+                    }
                 }
             }
-
             // ----- Büyüklük filtresi
             Text(
                 text = "Büyüklük (Mw)",
@@ -115,6 +126,54 @@ fun DepremHomeScreen(vm: HomeViewModel = viewModel()) {
             )
 
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+@Composable
+private fun EarthquakeList(vm: HomeViewModel) {
+    val fmt = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()) }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(vm.quakes, key = { it.id }) { q ->
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                tonalElevation = 2.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Magnitüd rozeti
+                    Surface(
+                        color = when {
+                            (q.magnitude ?: 0.0) >= 6.0 -> Color(0xFFEF5858)
+                            (q.magnitude ?: 0.0) >= 4.0 -> Color(0xFFF7B24A)
+                            (q.magnitude ?: 0.0) >= 2.0 -> Color(0xFFF5E28A)
+                            else -> Color(0xFFA7E6B5)
+                        },
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = (q.magnitude?.let { String.format(Locale.US, "%.1f", it) }
+                                    ?: "-"),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Column(Modifier.weight(1f)) {
+                        Text(q.place ?: "Konum bilinmiyor", fontWeight = FontWeight.SemiBold)
+                        val t = q.timeMillis?.let { fmt.format(Date(it)) } ?: "-"
+                        Text(t, fontSize = 12.sp, color = Color(0x99000000))
+                    }
+                }
+            }
         }
     }
 }
