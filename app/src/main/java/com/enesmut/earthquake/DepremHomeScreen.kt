@@ -1,13 +1,12 @@
 package com.enesmut.earthquake
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.runtime.LaunchedEffect
-import java.util.Date
+
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -24,7 +23,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.enesmut.earthquake.domain.Earthquake
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 // ---- Renkler (görsele yakın tonlar)
@@ -39,7 +40,13 @@ private val MagRed = Color(0xFFEF5858)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DepremHomeScreen(vm: HomeViewModel = viewModel()) {
+fun DepremHomeScreen(
+    vm: HomeViewModel = viewModel()
+) {
+    // İlk açılışta ve filtre değiştikçe veri çek
+    LaunchedEffect(Unit) { vm.load() }
+    LaunchedEffect(vm.timeIndex, vm.magSelection) { vm.load() }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -48,18 +55,17 @@ fun DepremHomeScreen(vm: HomeViewModel = viewModel()) {
                     IconButton(onClick = { vm.load() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Yenile")
                     }
-                    IconButton(onClick = { /* ayarlar */ }) {
+                    IconButton(onClick = { /* Ayarlar */ }) {
                         Icon(Icons.Default.Menu, contentDescription = "Ayarlar")
                     }
                 }
             )
         }
     ) { inner ->
-        // İlk açılışta otomatik veri çek
-        LaunchedEffect(Unit) { vm.load() }
-
         Column(
-            modifier = Modifier.padding(inner).fillMaxSize()
+            modifier = Modifier
+                .padding(inner)
+                .fillMaxSize()
         ) {
             // ----- Zaman Filtresi Başlık
             Text(
@@ -89,12 +95,14 @@ fun DepremHomeScreen(vm: HomeViewModel = viewModel()) {
                 onSelect = vm::selectTab
             )
 
-            // İçerik placeholder (şimdilik)
+            // ----- İçerik
             Box(
-                modifier = Modifier.weight(1f).fillMaxWidth()
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
             ) {
                 if (vm.tabIndex == 0) {
-                    // --- LISTE ---
+                    // --- LİSTE ---
                     when {
                         vm.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
@@ -102,15 +110,22 @@ fun DepremHomeScreen(vm: HomeViewModel = viewModel()) {
                         vm.error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text("Hata: ${vm.error}")
                         }
-                        else -> EarthquakeList(vm)
+                        vm.quakes.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                "Seçili aralıkta Türkiye için deprem bulunamadı.\nZaman penceresini genişletmeyi deneyin.",
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        else -> EarthquakeList(vm.quakes)
                     }
                 } else {
-                    // --- HARITA (sonraki adım) ---
+                    // --- HARİTA (sonraki adım) ---
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Harita entegrasyonu bir sonraki adımda")
+                        Text("Harita entegrasyonu bir sonraki adımda", textAlign = TextAlign.Center)
                     }
                 }
             }
+
             // ----- Büyüklük filtresi
             Text(
                 text = "Büyüklük (Mw)",
@@ -119,7 +134,7 @@ fun DepremHomeScreen(vm: HomeViewModel = viewModel()) {
             )
 
             MagnitudeChips(
-                items = listOf("≤ 2", "2<-<4", "4-<6", "≥ 6"),
+                items = listOf("≤ 2", "2–<4", "4–<6", "≥ 6"),
                 colors = listOf(MagGreen, MagYellow, MagOrange, MagRed),
                 selected = vm.magSelection,
                 onToggle = vm::toggleMagnitude
@@ -129,14 +144,17 @@ fun DepremHomeScreen(vm: HomeViewModel = viewModel()) {
         }
     }
 }
+
 @Composable
-private fun EarthquakeList(vm: HomeViewModel) {
+private fun EarthquakeList(items: List<Earthquake>) {
     val fmt = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()) }
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(vm.quakes, key = { it.id }) { q ->
+        items(items, key = { it.id }) { q ->
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 tonalElevation = 2.dp,
@@ -149,17 +167,16 @@ private fun EarthquakeList(vm: HomeViewModel) {
                     // Magnitüd rozeti
                     Surface(
                         color = when {
-                            (q.magnitude ?: 0.0) >= 6.0 -> Color(0xFFEF5858)
-                            (q.magnitude ?: 0.0) >= 4.0 -> Color(0xFFF7B24A)
-                            (q.magnitude ?: 0.0) >= 2.0 -> Color(0xFFF5E28A)
-                            else -> Color(0xFFA7E6B5)
+                            (q.magnitude ?: 0.0) >= 6.0 -> MagRed
+                            (q.magnitude ?: 0.0) >= 4.0 -> MagOrange
+                            (q.magnitude ?: 0.0) >= 2.0 -> MagYellow
+                            else -> MagGreen
                         },
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                             Text(
-                                text = (q.magnitude?.let { String.format(Locale.US, "%.1f", it) }
-                                    ?: "-"),
+                                text = q.magnitude?.let { String.format(Locale.US, "%.1f", it) } ?: "-",
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -207,7 +224,10 @@ private fun TimeSegmented(
                     .weight(1f)
                     .height(44.dp)
                     .clip(RoundedCornerShape(12.dp)),
-                colors = ButtonDefaults.textButtonColors(containerColor = bg, contentColor = textColor)
+                colors = ButtonDefaults.textButtonColors(
+                    containerColor = bg,
+                    contentColor = textColor
+                )
             ) {
                 Text(label, fontWeight = FontWeight.Medium)
             }
@@ -225,14 +245,14 @@ private fun TabsListMap(
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
         indicator = { tabPositions ->
-            Box(Modifier.fillMaxSize()) {                      // artık BoxScope içindeyiz
+            Box(Modifier.fillMaxSize()) {
                 val pos = tabPositions[selectedIndex]
                 Box(
                     Modifier
                         .tabIndicatorOffset(pos)
                         .height(2.dp)
                         .fillMaxWidth(0.48f)                  // görseldeki kısa çizgi
-                        .align(Alignment.BottomStart)         // burada artık çalışır
+                        .align(Alignment.BottomStart)
                         .padding(start = if (selectedIndex == 0) 24.dp else 0.dp)
                         .background(Color.Black.copy(alpha = 0.6f))
                 )
@@ -268,19 +288,26 @@ private fun MagnitudeChips(
     ) {
         items.forEachIndexed { i, label ->
             val isSel = i in selected
-            val bg = colors[i]
             val stroke = if (isSel) BorderStroke(2.dp, Color.Black.copy(alpha = 0.25f)) else null
+            val bg = colors[i]
+            val alpha = if (isSel) 1f else 0.4f
+
             Surface(
                 onClick = { onToggle(i) },
                 shape = RoundedCornerShape(16.dp),
-                color = bg,
-                border = stroke,
+                color = bg.copy(alpha = alpha),   // seçili değilse soluk
+                border = if (isSel) BorderStroke(2.dp, Color.Black.copy(alpha = 0.4f)) else null,
                 modifier = Modifier
                     .weight(1f)
                     .height(56.dp)
             ) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(label, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        label,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isSel) Color.Black else Color.DarkGray
+                    )
                 }
             }
         }

@@ -1,16 +1,15 @@
 package com.enesmut.earthquake.data
 import com.enesmut.earthquake.data.FeatureDto
 import com.enesmut.earthquake.domain.Earthquake
-
+// API FeatureDto -> Domain Earthquake dönüşümü
 fun FeatureDto.toDomain(): Earthquake {
-    val coords = geometry?.coordinates
-    val lon = coords?.getOrNull(0)
-    val lat = coords?.getOrNull(1)
-    val depth = coords?.getOrNull(2)
+    val lon = geometry?.coordinates?.getOrNull(0)
+    val lat = geometry?.coordinates?.getOrNull(1)
+    val depth = geometry?.coordinates?.getOrNull(2)
     return Earthquake(
         id = id,
-        magnitude = properties.mag,
         place = properties.place,
+        magnitude = properties.mag,
         timeMillis = properties.time,
         latitude = lat,
         longitude = lon,
