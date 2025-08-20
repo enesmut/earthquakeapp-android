@@ -37,6 +37,9 @@ private val MagGreen = Color(0xFFA7E6B5)
 private val MagYellow = Color(0xFFF5E28A)
 private val MagOrange = Color(0xFFF7B24A)
 private val MagRed = Color(0xFFEF5858)
+private val ddd = Color(0xFF3D3B3B)
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,11 +122,9 @@ fun DepremHomeScreen(
                         else -> EarthquakeList(vm.quakes)
                     }
                 } else {
-                    // --- HARİTA (sonraki adım) ---
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Harita entegrasyonu bir sonraki adımda", textAlign = TextAlign.Center)
-                    }
+                    EarthquakeMap(quakes = vm.quakes)
                 }
+
             }
 
             // ----- Büyüklük filtresi
@@ -134,10 +135,11 @@ fun DepremHomeScreen(
             )
 
             MagnitudeChips(
-                items = listOf("≤ 2", "2–<4", "4–<6", "≥ 6"),
-                colors = listOf(MagGreen, MagYellow, MagOrange, MagRed),
+                items = listOf("≤ 2", "2–<4", "4–<6", "≥ 6","sıfırla"),
+                colors = listOf(MagGreen, MagYellow, MagOrange, MagRed,ddd),
                 selected = vm.magSelection,
-                onToggle = vm::toggleMagnitude
+                onToggle = vm::toggleMagnitude,
+                onReset = vm::clearMagnitudes
             )
 
             Spacer(Modifier.height(16.dp))
@@ -278,7 +280,8 @@ private fun MagnitudeChips(
     items: List<String>,
     colors: List<Color>,
     selected: Set<Int>,
-    onToggle: (Int) -> Unit
+    onToggle: (Int) -> Unit,
+    onReset: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -288,12 +291,18 @@ private fun MagnitudeChips(
     ) {
         items.forEachIndexed { i, label ->
             val isSel = i in selected
+            val isSıfırla = label == "sıfırla"
             val stroke = if (isSel) BorderStroke(2.dp, Color.Black.copy(alpha = 0.25f)) else null
             val bg = colors[i]
             val alpha = if (isSel) 1f else 0.4f
 
             Surface(
-                onClick = { onToggle(i) },
+                onClick = {
+                    if (isSıfırla) {
+                        onReset()           // hepsi => sıfırla
+                    } else {
+                        onToggle(i)         // diğerleri normal
+                    } },
                 shape = RoundedCornerShape(16.dp),
                 color = bg.copy(alpha = alpha),   // seçili değilse soluk
                 border = if (isSel) BorderStroke(2.dp, Color.Black.copy(alpha = 0.4f)) else null,

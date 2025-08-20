@@ -1,3 +1,9 @@
+import java.util.Properties
+
+val mapsApiKey: String = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+}.getProperty("MAPS_API_KEY") ?: ""
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -9,6 +15,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         applicationId = "com.enesmut.earthquake"
         minSdk = 24
         targetSdk = 36
@@ -40,8 +47,11 @@ android {
 }
 
 dependencies {
+    implementation("com.google.maps.android:maps-compose:4.4.1")
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
     // Kotlin coroutines
