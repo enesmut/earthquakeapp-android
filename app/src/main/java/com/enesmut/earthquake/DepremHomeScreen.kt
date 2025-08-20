@@ -1,6 +1,6 @@
 package com.enesmut.earthquake
 
-
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.enesmut.earthquake.domain.Earthquake
+import com.enesmut.earthquake.ui.theme.SettingsSheet
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -40,6 +41,7 @@ private val MagRed = Color(0xFFEF5858)
 private val ddd = Color(0xFF3D3B3B)
 
 
+private val DangerContainer = Color(0xFF5A1212) // koyu zemin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,16 +52,20 @@ fun DepremHomeScreen(
     LaunchedEffect(Unit) { vm.load() }
     LaunchedEffect(vm.timeIndex, vm.magSelection) { vm.load() }
 
+    var showSettings by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Deprem", fontSize = 28.sp, fontWeight = FontWeight.Bold) },
+                title = {
+                    Text("Deprem", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                },
                 actions = {
                     IconButton(onClick = { vm.load() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Yenile")
                     }
-                    IconButton(onClick = { /* Ayarlar */ }) {
-                        Icon(Icons.Default.Menu, contentDescription = "Ayarlar")
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Ayarlar")
                     }
                 }
             )
@@ -70,21 +76,18 @@ fun DepremHomeScreen(
                 .padding(inner)
                 .fillMaxSize()
         ) {
-            // ----- Zaman Filtresi Başlık
             Text(
                 text = "Zaman Filtresi",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
             )
 
-            // ----- Zaman Filtresi (segmented)
             TimeSegmented(
                 items = listOf("24 saat", "48 saat", "72 saat", "96 saat"),
                 selectedIndex = vm.timeIndex,
                 onSelect = vm::selectTime
             )
 
-            // "son 24 saat" satırı
             Text(
                 text = "son ${vm.timeLabel}",
                 style = MaterialTheme.typography.bodyMedium,
@@ -92,20 +95,17 @@ fun DepremHomeScreen(
                 color = Color(0x99000000)
             )
 
-            // ----- Liste / Harita sekmeleri
             TabsListMap(
                 selectedIndex = vm.tabIndex,
                 onSelect = vm::selectTab
             )
 
-            // ----- İçerik
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
             ) {
                 if (vm.tabIndex == 0) {
-                    // --- LİSTE ---
                     when {
                         vm.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
@@ -124,10 +124,8 @@ fun DepremHomeScreen(
                 } else {
                     EarthquakeMap(quakes = vm.quakes)
                 }
-
             }
 
-            // ----- Büyüklük filtresi
             Text(
                 text = "Büyüklük (Mw)",
                 style = MaterialTheme.typography.titleMedium,
@@ -135,8 +133,8 @@ fun DepremHomeScreen(
             )
 
             MagnitudeChips(
-                items = listOf("≤ 2", "2–<4", "4–<6", "≥ 6","sıfırla"),
-                colors = listOf(MagGreen, MagYellow, MagOrange, MagRed,ddd),
+                items = listOf("≤ 2", "2–<4", "4–<6", "≥ 6", "sıfırla"),
+                colors = listOf(MagGreen, MagYellow, MagOrange, MagRed, ddd),
                 selected = vm.magSelection,
                 onToggle = vm::toggleMagnitude,
                 onReset = vm::clearMagnitudes
@@ -144,6 +142,12 @@ fun DepremHomeScreen(
 
             Spacer(Modifier.height(16.dp))
         }
+    }
+
+    // <<< EKLENEN KISIM: Ayarlar sheet'i >>>
+    if (showSettings)    ModalBottomSheet(onDismissRequest = { showSettings = false },
+              sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+              SettingsSheet(onClose = { showSettings = false })
     }
 }
 
