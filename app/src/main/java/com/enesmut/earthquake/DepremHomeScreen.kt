@@ -1,5 +1,4 @@
 package com.enesmut.earthquake
-
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -25,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.enesmut.earthquake.domain.Earthquake
 import com.enesmut.earthquake.ui.theme.SettingsSheet
+import com.enesmut.earthquake.ui.theme.SettingsViewModel   // <-- EKLENDİ
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -40,7 +40,6 @@ private val MagOrange = Color(0xFFF7B24A)
 private val MagRed = Color(0xFFEF5858)
 private val ddd = Color(0xFF3D3B3B)
 
-
 private val DangerContainer = Color(0xFF5A1212) // koyu zemin
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,9 +47,20 @@ private val DangerContainer = Color(0xFF5A1212) // koyu zemin
 fun DepremHomeScreen(
     vm: HomeViewModel = viewModel()
 ) {
-    // İlk açılışta ve filtre değiştikçe veri çek
-    LaunchedEffect(Unit) { vm.load() }
-    LaunchedEffect(vm.timeIndex, vm.magSelection) { vm.load() }
+    // --- Settings VM'i içeri al (sadece il seçimi için)  ---  <-- EKLENDİ
+    val settingsVm = viewModel<SettingsViewModel>()
+    val settingsUi by settingsVm.state.collectAsState()
+    val selectedProvince = settingsVm.selectedProvinceOrNull(settingsUi.province)
+
+    // Province, timeIndex veya magnitude değiştiğinde tetiklenir
+    LaunchedEffect(selectedProvince?.lat, selectedProvince?.lon, vm.timeIndex, vm.magSelection) {
+        if (selectedProvince?.lat != null && selectedProvince.lon != null) {
+            vm.loadByProvince(selectedProvince.lat, selectedProvince.lon, radiusKm = 200)
+        } else {
+            vm.load()
+        }
+    }
+
 
     var showSettings by remember { mutableStateOf(false) }
 
@@ -122,7 +132,10 @@ fun DepremHomeScreen(
                         else -> EarthquakeList(vm.quakes)
                     }
                 } else {
-                    EarthquakeMap(quakes = vm.quakes)
+                    EarthquakeMap(quakes = vm.quakes,
+                        provinceLat = selectedProvince?.lat,   // <-- sadece double veriyoruz
+                        provinceLon = selectedProvince?.lon)
+
                 }
             }
 
@@ -144,10 +157,14 @@ fun DepremHomeScreen(
         }
     }
 
-    // <<< EKLENEN KISIM: Ayarlar sheet'i >>>
-    if (showSettings)    ModalBottomSheet(onDismissRequest = { showSettings = false },
-              sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-              SettingsSheet(onClose = { showSettings = false })
+    // Ayarlar sheet'i
+    if (showSettings) {
+        ModalBottomSheet(
+            onDismissRequest = { showSettings = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            SettingsSheet(onClose = { showSettings = false })
+        }
     }
 }
 

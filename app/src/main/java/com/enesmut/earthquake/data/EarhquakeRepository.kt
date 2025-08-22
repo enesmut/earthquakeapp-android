@@ -1,5 +1,4 @@
 package com.enesmut.earthquake.data
-
 import android.os.Build
 import com.enesmut.earthquake.domain.Earthquake
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +64,50 @@ class EarthquakeRepository(
 
         filtered
             .distinctBy { it.id }
+            .sortedByDescending { it.timeMillis ?: 0L }
+    }
+
+    // --- EKLENDİ: ViewModel'deki loadByProvince için köprü ---
+    // Şimdilik Türkiye BBOX yolunu kullanır; derleme hatasını çözer.
+    // İleride USGS circle endpoint hazır olunca burayı gerçek radius çağrısına çevirebiliriz.
+    suspend fun fetchAroundProvince(
+        hoursWindow: Int,
+        lat: Double,
+        lon: Double,
+        radiusKm: Int,
+        ranges: List<Pair<Double, Double>>
+    ): List<Earthquake> = withContext(Dispatchers.IO) {
+
+        val end = nowUtc()
+        val start = hoursAgoUtc(hoursWindow)
+
+        // tek istek için server-side kabaca daralt (payload küçülür)
+        val serverMin = ranges.minOfOrNull { it.first } ?: 0.0
+        val serverMax = ranges.maxOfOrNull { it.second } ?: 10.0
+
+        val dto = service.getEarthquakesCircle(
+            startTime = start,
+            endTime = end,
+            latitude = lat,
+            longitude = lon,
+            radiusKm = radiusKm,
+            minMag = serverMin,
+            maxMag = serverMax
+        )
+
+        val all = dto.features
+            .map { it.toDomain() }
+            .filter { it.latitude != null && it.longitude != null }
+
+        // kesin filtre (çoklu aralıkları cihazda uygula)
+        val filtered = if (ranges.isEmpty()) all else {
+            all.filter { e ->
+                val m = e.magnitude ?: return@filter false
+                ranges.any { (a, b) -> if (b == 10.0) m >= a else (m >= a && m < b) }
+            }
+        }
+
+        filtered.distinctBy { it.id }
             .sortedByDescending { it.timeMillis ?: 0L }
     }
 }

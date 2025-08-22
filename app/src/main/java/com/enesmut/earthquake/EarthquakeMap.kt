@@ -1,20 +1,37 @@
 package com.enesmut.earthquake
-
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import com.enesmut.earthquake.domain.Earthquake
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.CameraUpdateFactory      // <-- ÖNEMLİ import
 import com.google.maps.android.compose.*
 
 @Composable
-fun EarthquakeMap(quakes: List<Earthquake>) {
-    // Türkiye merkezine yakın başlangıç
+fun EarthquakeMap(
+    quakes: List<Earthquake>,
+    provinceLat: Double? = null,     // <-- eklendi
+    provinceLon: Double? = null      // <-- eklendi
+) {
     val turkey = LatLng(39.0, 35.0)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(turkey, 5f)
+    }
+
+    // İl seçildiyse kamerayı oraya kaydır
+    LaunchedEffect(provinceLat, provinceLon) {
+        if (provinceLat != null && provinceLon != null) {
+            cameraPositionState.animate(
+                update = CameraUpdateFactory.newLatLngZoom(
+                    LatLng(provinceLat, provinceLon),
+                    7f
+                ),
+                durationMs = 800
+            )
+        }
     }
 
     GoogleMap(

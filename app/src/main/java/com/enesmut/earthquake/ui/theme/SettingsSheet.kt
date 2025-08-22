@@ -1,5 +1,6 @@
 package com.enesmut.earthquake.ui.theme
 
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -12,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.enesmut.earthquake.data.TURKISH_PROVINCES
+import com.enesmut.earthquake.data.Province
 import kotlin.math.roundToInt
 
 // Kritik aksan rengi
@@ -25,13 +26,19 @@ fun SettingsSheet(
     vm: SettingsViewModel = viewModel()
 ) {
     val ui by vm.state.collectAsState()
+    val provinces by vm.provinces.collectAsState()
 
     Column(Modifier.fillMaxWidth().padding(20.dp)) {
         Text("Ayarlar", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
 
         Spacer(Modifier.height(12.dp))
         Text("İl", style = MaterialTheme.typography.titleMedium)
-        ProvinceDropdown(selected = ui.province, onSelect = vm::setProvince)
+
+        ProvinceDropdown(
+            selectedName = ui.province,
+            provinces = provinces,
+            onSelect = { city -> vm.setProvince(city.text) }
+        )
 
         Spacer(Modifier.height(12.dp))
         Row(
@@ -61,7 +68,6 @@ fun SettingsSheet(
             Spacer(Modifier.height(12.dp))
             Text("Bildirim Eşiği (Mw)", style = MaterialTheme.typography.titleMedium)
 
-            // --- ARALIK SLIDER (1..9) ---
             MagnitudeRangeSlider(
                 value = ui.notifMin..ui.notifMax,
                 onChange = { r -> vm.setNotifRange(r.first, r.last) },
@@ -85,14 +91,22 @@ fun SettingsSheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProvinceDropdown(selected: String, onSelect: (String) -> Unit) {
+private fun ProvinceDropdown(
+    selectedName: String,
+    provinces: List<Province>,
+    onSelect: (Province) -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
+    val selectedText = remember(selectedName, provinces) {
+        provinces.firstOrNull { it.text.equals(selectedName, true) }?.text ?: selectedName
+    }
+
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded }
     ) {
         OutlinedTextField(
-            value = selected,
+            value = selectedText,
             onValueChange = {},
             readOnly = true,
             label = { Text("İl seç") },
@@ -104,9 +118,9 @@ private fun ProvinceDropdown(selected: String, onSelect: (String) -> Unit) {
             onDismissRequest = { expanded = false },
             modifier = Modifier.exposedDropdownSize()
         ) {
-            TURKISH_PROVINCES.forEach { city ->
+            provinces.forEach { city ->
                 DropdownMenuItem(
-                    text = { Text(city) },
+                    text = { Text("${city.text} (${city.keyNo})") },
                     onClick = { onSelect(city); expanded = false }
                 )
             }

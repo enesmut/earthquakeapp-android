@@ -1,13 +1,11 @@
 package com.enesmut.earthquake.data
-
-val TURKISH_PROVINCES = listOf(
-    "Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Artvin","Aydın",
-    "Balıkesir","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum",
-    "Denizli","Diyarbakır","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun",
-    "Gümüşhane","Hakkari","Hatay","Isparta","Mersin","İstanbul","İzmir","Kars","Kastamonu","Kayseri",
-    "Kırklareli","Kırşehir","Kocaeli","Konya","Kütahya","Malatya","Manisa","Kahramanmaraş","Mardin",
-    "Muğla","Muş","Nevşehir","Niğde","Ordu","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas",
-    "Tekirdağ","Tokat","Trabzon","Tunceli","Şanlıurfa","Uşak","Van","Yozgat","Zonguldak","Aksaray",
-    "Bayburt","Karaman","Kırıkkale","Batman","Şırnak","Bartın","Ardahan","Iğdır","Yalova","Karabük",
-    "Kilis","Osmaniye","Düzce"
-)
+// JSON'dan okuyacağımız model:
+// location: [latitude, longitude]
+data class Province(
+    val text: String,
+    val keyNo: Int,
+    val location: List<Double>
+) {
+    val lat: Double? get() = location.getOrNull(0)
+    val lon: Double? get() = location.getOrNull(1)
+}

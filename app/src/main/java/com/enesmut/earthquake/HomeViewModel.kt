@@ -26,8 +26,7 @@ class HomeViewModel : ViewModel() {
         private set
 
     // --- Data ---
-    private val repo =
-        EarthquakeRepository(NetworkModule.usgsService) // adı usgsService değilse usgs olsun
+    private val repo = EarthquakeRepository(NetworkModule.usgsService)
     var isLoading by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
     var quakes by mutableStateOf<List<Earthquake>>(emptyList()); private set
@@ -43,10 +42,7 @@ class HomeViewModel : ViewModel() {
         load()
     }
 
-    fun selectTab(i: Int) {
-        tabIndex = i
-        // liste/harita geçişinde yükleme zorunlu değil; istersen burada da load() çağırabilirsin
-    }
+    fun selectTab(i: Int) { tabIndex = i }
 
     fun toggleMagnitude(i: Int) {
         magSelection = if (i in magSelection) magSelection - i else magSelection + i
@@ -58,37 +54,76 @@ class HomeViewModel : ViewModel() {
         load()
     }
 
+    /** Türkiye bbox (mevcut davranış) */
     fun load() {
         // önceki network çağrısını iptal et
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             isLoading = true
-            // önceki hatayı temizle (ama iptalden doğanı göstermeyeceğiz)
             error = null
             try {
-                val hours = listOf(24, 48, 72, 96)[timeIndex]
-                val ranges: List<Pair<Double, Double>> =
-                    if (magSelection.isEmpty()) emptyList()
-                    else magSelection.sorted().map {
-                        when (it) {
-                            0 -> 0.0 to 2.0
-                            1 -> 2.0 to 4.0
-                            2 -> 4.0 to 6.0
-                            3 -> 6.0 to 10.0
-                            else -> 0.0 to 10.0
-                        }
-                    }
-
+                val hours = listHours()[timeIndex]
+                val ranges = buildRanges(magSelection)
                 quakes = repo.fetchTurkey(hoursWindow = hours, ranges = ranges)
             } catch (ce: CancellationException) {
-                // iptal normal bir durum; hatayı göstermiyoruz
-                // isteğe bağlı: logla ama UI'ya yansıtma
-                // Log.d("VM", "load() cancelled")
+                // iptal normal — UI'ya hata basma
             } catch (t: Throwable) {
-                // gerçek bir hata
                 error = t.message ?: "Bilinmeyen hata"
                 quakes = emptyList()
             } finally {
                 isLoading = false
             }
-        }}}
+        }
+    }
+
+    /**
+     * İl merkezine göre dairesel (radius) arama.
+     * lat/lon null ise mevcut load() yoluna düşer.
+     */
+    fun loadByProvince(lat: Double?, lon: Double?, radiusKm: Int = 200) {
+        if (lat == null || lon == null) {
+            // Koordinat yoksa Türkiye bbox ile devam
+            load()
+            return
+        }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            isLoading = true
+            error = null
+            try {
+                val hours = listHours()[timeIndex]
+                val ranges = buildRanges(magSelection)
+                // NOTE: repo’da bu fonksiyon yoksa aşağıdaki imzayla ekle:
+                // suspend fun fetchAroundProvince(hoursWindow: Int, lat: Double, lon: Double, radiusKm: Int, ranges: List<Pair<Double, Double>>): List<Earthquake>
+                quakes = repo. fetchAroundProvince(
+                    hoursWindow = hours,
+                    lat = lat,
+                    lon = lon,
+                    radiusKm = radiusKm,
+                    ranges = ranges
+                )
+            } catch (ce: CancellationException) {
+                // iptal normal
+            } catch (t: Throwable) {
+                error = t.message ?: "Bilinmeyen hata"
+                quakes = emptyList()
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    // --- Helpers ---
+    private fun listHours() = listOf(24, 48, 72, 96)
+
+    private fun buildRanges(sel: Set<Int>): List<Pair<Double, Double>> =
+        if (sel.isEmpty()) emptyList() else sel.sorted().map {
+            when (it) {
+                0 -> 0.0 to 2.0
+                1 -> 2.0 to 4.0
+                2 -> 4.0 to 6.0
+                3 -> 6.0 to 10.0
+                else -> 0.0 to 10.0
+            }
+        }
+}
